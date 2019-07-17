@@ -39,6 +39,7 @@ public abstract class NetworkBoundResource<CacheObject, RequestObject> {
 
                 if (shouldFetch(cacheObject)) {
                     // get data from network
+                    fetchFromNetwork(dbSource);
 
                 } else {
                     result.addSource(dbSource, new Observer<CacheObject>() {
