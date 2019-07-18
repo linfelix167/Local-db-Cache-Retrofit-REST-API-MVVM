@@ -10,8 +10,12 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.widget.Toast;
 
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.RequestManager;
+import com.bumptech.glide.request.RequestOptions;
 import com.codingwithmitch.foodrecipes.adapters.OnRecipeListener;
 import com.codingwithmitch.foodrecipes.adapters.RecipeRecyclerAdapter;
 import com.codingwithmitch.foodrecipes.models.Recipe;
@@ -21,6 +25,8 @@ import com.codingwithmitch.foodrecipes.util.VerticalSpacingItemDecorator;
 import com.codingwithmitch.foodrecipes.viewmodels.RecipeListViewModel;
 
 import java.util.List;
+
+import static com.codingwithmitch.foodrecipes.viewmodels.RecipeListViewModel.QUERY_EXHAUSTED;
 
 
 public class RecipeListActivity extends BaseActivity implements OnRecipeListener {
@@ -49,7 +55,7 @@ public class RecipeListActivity extends BaseActivity implements OnRecipeListener
 
 
     private void initRecyclerView() {
-        mAdapter = new RecipeRecyclerAdapter(this);
+        mAdapter = new RecipeRecyclerAdapter(this, initGlide());
         VerticalSpacingItemDecorator itemDecorator = new VerticalSpacingItemDecorator(30);
         mRecyclerView.addItemDecoration(itemDecorator);
         mRecyclerView.setAdapter(mAdapter);
@@ -91,7 +97,38 @@ public class RecipeListActivity extends BaseActivity implements OnRecipeListener
                     Log.d(TAG, "onChanged: status: " + listResource.status);
 
                     if (listResource.data != null) {
-                        Testing.printRecipes(listResource.data, "data");
+                        switch (listResource.status) {
+                            case LOADING: {
+                                if (mRecipeListViewModel.getPageNumber() > 1) {
+                                    mAdapter.displayLoading();
+                                } else {
+                                    mAdapter.displayOnlyLoading();
+                                }
+                                break;
+                            }
+
+                            case ERROR: {
+                                Log.e(TAG, "onChanged: cannot refresh the cache");
+                                Log.e(TAG, "onChanged: ERROR message: " + listResource.message);
+                                Log.e(TAG, "onChanged: status: ERROR, #recipes: " + listResource.data.size());
+                                mAdapter.hideLoading();
+                                mAdapter.setRecipes(listResource.data);
+                                Toast.makeText(RecipeListActivity.this, listResource.message, Toast.LENGTH_SHORT).show();
+
+                                if (listResource.message.equals(QUERY_EXHAUSTED)) {
+                                    mAdapter.setQueryExhausted();
+                                }
+                                break;
+                            }
+
+                            case SUCCESS: {
+                                Log.d(TAG, "onChanged: cache has been refreshed");
+                                Log.d(TAG, "onChanged: status: SUCCESS, #recipes: " + listResource.data.size());
+                                mAdapter.hideLoading();
+                                mAdapter.setRecipes(listResource.data);
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -114,6 +151,14 @@ public class RecipeListActivity extends BaseActivity implements OnRecipeListener
                 }
             }
         });
+    }
+
+    private RequestManager initGlide() {
+        RequestOptions options = new RequestOptions()
+                .placeholder(R.drawable.white_background)
+                .error(R.drawable.white_background);
+
+        return Glide.with(this).setDefaultRequestOptions(options);
     }
 
     private void searchRecipesApi(String query) {
