@@ -33,6 +33,7 @@ public class RecipeListViewModel extends AndroidViewModel {
     private boolean isPerformingQuery;
     private int pageNumber;
     private String query;
+    private boolean cancelRequest;
 
     public RecipeListViewModel(@NonNull Application application) {
         super(application);
@@ -72,6 +73,7 @@ public class RecipeListViewModel extends AndroidViewModel {
     }
 
     private void executeSearch() {
+        cancelRequest = false;
         isPerformingQuery = true;
         viewState.setValue(ViewState.RECIPES);
         final LiveData<Resource<List<Recipe>>> repositorySource = recipeRepository.searchRecipesApi(query, pageNumber);
@@ -79,25 +81,29 @@ public class RecipeListViewModel extends AndroidViewModel {
         recipes.addSource(repositorySource, new Observer<Resource<List<Recipe>>>() {
             @Override
             public void onChanged(@Nullable Resource<List<Recipe>> listResource) {
-                if (listResource != null) {
-                    recipes.setValue(listResource);
-                    if (listResource.status == Resource.Status.SUCCESS) {
-                        isPerformingQuery = false;
-                        if (listResource.data != null) {
-                            if (listResource.data.size() == 0) {
-                                Log.d(TAG, "onChanged: query is exhausted...");
-                                recipes.setValue(
-                                        new Resource<List<Recipe>>(
-                                                Resource.Status.ERROR,
-                                                listResource.data,
-                                                QUERY_EXHAUSTED
-                                        )
-                                );
+                if (!cancelRequest) {
+                    if (listResource != null) {
+                        recipes.setValue(listResource);
+                        if (listResource.status == Resource.Status.SUCCESS) {
+                            isPerformingQuery = false;
+                            if (listResource.data != null) {
+                                if (listResource.data.size() == 0) {
+                                    Log.d(TAG, "onChanged: query is exhausted...");
+                                    recipes.setValue(
+                                            new Resource<List<Recipe>>(
+                                                    Resource.Status.ERROR,
+                                                    listResource.data,
+                                                    QUERY_EXHAUSTED
+                                            )
+                                    );
+                                }
                             }
+                            recipes.removeSource(repositorySource);
+                        } else if (listResource.status == Resource.Status.ERROR) {
+                            isPerformingQuery = false;
+                            recipes.removeSource(repositorySource);
                         }
-                        recipes.removeSource(repositorySource);
-                    } else if (listResource.status == Resource.Status.ERROR) {
-                        isPerformingQuery = false;
+                    } else {
                         recipes.removeSource(repositorySource);
                     }
                 } else {
@@ -105,6 +111,26 @@ public class RecipeListViewModel extends AndroidViewModel {
                 }
             }
         });
+    }
+
+    public void searchNextPage() {
+        if (!isQueryExhausted && !isPerformingQuery) {
+            pageNumber++;
+            executeSearch();
+        }
+    }
+
+    public void setViewCategories() {
+        viewState.setValue(ViewState.CATEGORIES);
+    }
+
+    public void cancelSearchRequest() {
+        if (isPerformingQuery) {
+            Log.d(TAG, "cancelSearchRequest: canceling the search request.");
+            cancelRequest = true;
+            isPerformingQuery = false;
+            pageNumber = 1;
+        }
     }
 }
 
