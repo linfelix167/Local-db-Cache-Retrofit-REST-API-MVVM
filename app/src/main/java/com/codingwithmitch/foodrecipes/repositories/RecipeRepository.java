@@ -42,6 +42,7 @@ public class RecipeRepository {
             @Override
             public void saveCallResult(@NonNull RecipeSearchResponse item) {
                 if (item.getRecipes() != null) {
+
                     Recipe[] recipes = new Recipe[item.getRecipes().size()];
 
                     int index = 0;
