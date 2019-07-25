@@ -26,4 +26,7 @@ public class Constants {
     public static final int CONNECTION_TIMEOUT = 10;
     public static final int READ_TIMEOUT = 2;
     public static final int WRITE_TIMEOUT = 2;
+
+    // 30 days (in secs)
+    public static final int RECIPE_REFRESH_TIME = 60 * 60 * 24 * 30;
 }
